@@ -1,10 +1,10 @@
+MONGO_URI = "mongodb+srv://aa270:Achraf2004**@hackrice-trial-db.v9ye8.mongodb.net/?retryWrites=true&w=majority&appName=Hackrice-Trial-DB";
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const multer = require("multer");
 const path = require("path");
-
-require("dotenv").config({ path: "../.env" });
 
 const upload = multer({ dest: "uploads/" });
 const app = express();
@@ -16,7 +16,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "../client/build")));
 
 mongoose
-  .connect(process.env.MONGO_URI, {
+  .connect(MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
@@ -61,7 +61,7 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/build/index.html"));
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node server/app.js",
+    "start": "node app.js",
     "server": "nodemon server/app.js",
     "client": "npm start --prefix client",
     "dev": "concurrently \"npm run server\" \"npm run client\""
@@ -20,6 +20,6 @@
   },
   "devDependencies": {
     "concurrently": "^6.3.0",
-    "nodemon": "^2.0.14"
+    "nodemon": "^2.0.22"
   }
 }
