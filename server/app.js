@@ -1,4 +1,4 @@
-MONGO_URI = "mongodb+srv://aa270:Achraf2004**@hackrice-trial-db.v9ye8.mongodb.net/?retryWrites=true&w=majority&appName=Hackrice-Trial-DB";
+require("dotenv").config({ path: "../.env" });
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -61,7 +61,7 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/build/index.html"));
 });
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
