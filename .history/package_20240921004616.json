@@ -2,7 +2,7 @@
   "name": "hackrice-2024",
   "version": "1.0.0",
   "description": "HackRice 2024 Project",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
     "start": "node server/app.js",
     "server": "nodemon server/app.js",
