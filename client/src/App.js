@@ -5,18 +5,14 @@ import "./App.css"; // Make sure this import is present
 
 function App() {
   const [isStarted, setIsStarted] = useState(false);
-  // const [topics, setTopics] = useState("");
-  // new code
   const [topics, setTopics] = useState([]);
   const [currentTopic, setCurrentTopic] = useState("");
-    // new code
   const [file, setFile] = useState(null);
 
   const handleStart = () => {
     setIsStarted(true);
   };
 
-  // new code
   const handleTopicInputChange = (e) => {
     setCurrentTopic(e.target.value);
   };
@@ -32,34 +28,6 @@ function App() {
   const handleRemoveTopic = (indexToRemove) => {
     setTopics(topics.filter((_, index) => index !== indexToRemove));
   };
-  //new code
-
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   const formData = new FormData();
-  //   formData.append("topics", topics);
-  //   if (file) {
-  //     formData.append("pdf", file);
-  //   }
-
-  //   try {
-  //     const response = await axios.post(
-  //       "http://localhost:3000/start-learning",
-  //       formData,
-  //       {
-  //         headers: { "Content-Type": "multipart/form-data" },
-  //       }
-  //     );
-  //     console.log(response.data);
-  //     alert("Learning session started!");
-  //     setTopics("");
-  //     setFile(null);
-  //     setIsStarted(false);
-  //   } catch (error) {
-  //     console.error("Error starting learning session:", error);
-  //     alert("Error starting learning session");
-  //   }
-  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -77,10 +45,24 @@ function App() {
         }
       );
       console.log(response.data);
+
+      // Send filepath to Flask backend
+      if (file) {
+        const flaskResponse = await axios.post(
+          "http://localhost:5000/api/submitPDF",
+          { filepath: file },
+          {
+            headers: { "Content-Type": "application/json" ,
+                       "Access-Control-Allow-Origin": "*"
+            },
+          }
+        );
+        console.log("Flask response:", flaskResponse.data);
+      }
+
       alert("Learning session started!");
       setTopics([]);
       setFile(null);
-      setIsStarted(false);
     } catch (error) {
       console.error("Error starting learning session:", error);
       alert("Error starting learning session");
@@ -90,13 +72,6 @@ function App() {
 
 
   if (!isStarted) {
-  //   return (
-  //     <div className="app-container">
-  //       <h1 className="centered-header">Welcome to the Learning App</h1>
-  //       <button className="start-button" onClick={handleStart}>Start Learning</button>
-  //     </div>
-  //   );
-  // }
     return (
       <div className="app-container-landing">
         <div className="content">
