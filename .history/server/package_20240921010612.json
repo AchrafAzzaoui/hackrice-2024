@@ -9,17 +9,15 @@
     "dev": "concurrently \"npm run server\" \"npm run client\""
   },
   "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^6.0.12",
     "cors": "^2.8.5",
     "dotenv": "^10.0.0",
-    "express": "^4.17.1",
     "langchain": "^0.1.1",
-    "mongodb": "^6.9.0",
-    "mongoose": "^6.13.2",
-    "multer": "^1.4.5-lts.1",
     "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
-    "concurrently": "^6.3.0",
-    "nodemon": "^2.0.14"
+    "nodemon": "^2.0.14",
+    "concurrently": "^6.3.0"
   }
 }

@@ -1,13 +1,9 @@
-require("dotenv").config({ path: "../.env" });
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const multer = require("multer");
-
-// Set up multer for file uploads
 const upload = multer({ dest: "uploads/" });
-
-console.log("MONGO_URI:", process.env.MONGO_URI ? "Defined" : "Undefined");
 
 const app = express();
 
@@ -20,12 +16,8 @@ mongoose
     useUnifiedTopology: true,
   })
   .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => {
-    console.error("MongoDB connection error:", err);
-    process.exit(1);
-  });
+  .catch((err) => console.error("MongoDB connection error:", err));
 
-// Define your LearningSession model here
 const LearningSession = mongoose.model(
   "LearningSession",
   new mongoose.Schema({
@@ -56,7 +48,7 @@ app.post("/start-learning", upload.single("pdf"), async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

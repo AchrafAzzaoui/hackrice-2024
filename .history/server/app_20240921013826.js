@@ -1,12 +1,10 @@
-require("dotenv").config({ path: "../.env" });
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const multer = require("multer");
 
-// Set up multer for file uploads
-const upload = multer({ dest: "uploads/" });
-
+// Log the MONGO_URI (remove this in production)
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Defined" : "Undefined");
 
 const app = express();
@@ -25,7 +23,7 @@ mongoose
     process.exit(1);
   });
 
-// Define your LearningSession model here
+// Rest of your code...
 const LearningSession = mongoose.model(
   "LearningSession",
   new mongoose.Schema({
