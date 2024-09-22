@@ -13,9 +13,6 @@ import re
 from dotenv import load_dotenv
 
 load_dotenv()
-# os.environ["LANGCHAIN_TRACING_V2"] = "true"
-# os.environ["LANGCHAIN_API_KEY"] = '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'
-# os.environ["OPENAI_API_KEY"] = "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"
 
 def getKnowledgeGraph(topics_input: str, extracted_text: str):
     topics = [topic.strip() for topic in topics_input.split(',')]
