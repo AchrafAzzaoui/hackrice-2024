@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./App.css"; // Make sure this import is present
 
@@ -43,16 +43,23 @@ function App() {
         {
           headers: { "Content-Type": "multipart/form-data" },
         }
-      );
-      console.log(response.data);
+      ).then((response) => console.log(response));
 
       // Send filepath to Flask backend
       if (file) {
         const flaskResponse = await axios.post(
-          "http://localhost:5000/api/submitPDF",
-          { filepath: file }
+          "http://127.0.0.1:5000/submitPDF",
+          { filename: file.name,
+            topics: topics.join(',')
+           },
+          {
+            headers: { "Content-Type": "application/json",
+                      "Access-Control-Allow-Origin": "*"
+             }
+          }
         );
         console.log("Flask response:", flaskResponse.data);
+
       }
 
       alert("Learning session started!");
@@ -91,7 +98,7 @@ function App() {
           <h1>Set Up Your<br />Learning Session</h1>
         </div>
         <div className="right-side">
-          <form onSubmit={handleSubmit}>
+          <form>
             <div className="form-group">
               <label htmlFor="topics">Topics:</label>
               <div className="topics-input-container">
@@ -115,7 +122,7 @@ function App() {
               <label htmlFor="pdf">Upload PDF (optional):</label>
               <input type="file" id="pdf" onChange={(e) => setFile(e.target.files[0])} />
             </div>
-            <button type="submit" className="start-button">Start Session</button>
+            <button className="start-button" onClick={handleSubmit}>Start Session</button>
           </form>
         </div>
       </div>
