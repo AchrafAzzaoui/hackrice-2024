@@ -16,63 +16,27 @@ evaluation_chain = None
 answer_chain = None
 
 
-@app.route("/submit-explanation", methods=['POST', 'OPTIONS'])
+@app.route("/submit-explanation", methods=['POST'])
 def submit_explanation():
     global memory, question_chain, evaluation_chain
+    data = request.json
+    topic = data['topic']
+    explanation = data['explanation']
 
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-        response.headers['Content-Type'] = '*'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, access-control-allow-origin, Access-Control-Allow-Origin'
-        return response
-    elif request.method == 'POST':
-        data = request.json
-        topic = data['topic']
-        explanation = data['explanation']
+    memory.save_context({"topic": topic}, {"text": explanation})
 
-        memory.save_context({"topic": topic}, {"text": explanation})
+    question = question_chain.run(
+        topic=topic,
+        context=vector_embeddings.get(topic, ""),
+        chat_history=memory.load_memory_variables({})["chat_history"],
+        evaluation_feedback="None",
+        difficulty='easy'
+    ).strip()
 
-        retriever = vector_embeddings.as_retriever(
-        search_kwargs={
-            "k": 25,
-            "pre_filter": {
-                "$and": [
-                    {"topics": {"$in": [topic]}},
-                    {"user_id": user_id},
-                    {"session": session}
-                    ]
-                }
-            }
-        )
-
-        relevant_docs = retriever.get_relevant_documents(topic)
-        context = "\n".join([doc.page_content for doc in relevant_docs])
-
-        question = question_chain.run(
-            topic=topic,
-            context=context,
-            chat_history=memory.load_memory_variables({})["chat_history"],
-            evaluation_feedback="None",
-            difficulty='easy'
-        ).strip()
-
-        response_data = jsonify({
-            "feedback": "Great explanation! Let's test your understanding.",
-            "question": question
-        })
-
-        # Set the Content-Type header to application/json
-        response_data.headers['Content-Type'] = 'application/json'
-        
-        # Copy over the CORS headers
-        response_data.headers['Access-Control-Allow-Origin'] = '*'
-        response_data.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-        response_data.headers['Content-Type'] = '*'
-        response_data.headers['Access-Control-Allow-Headers'] = 'Content-Type, access-control-allow-origin, Access-Control-Allow-Origin'
-
-        return response_data
+    return jsonify({
+        "feedback": "Great explanation! Let's test your understanding.",
+        "question": question
+    })
 
 @app.route("/submit-answer", methods=['POST', 'OPTIONS'])
 def submit_answer():
@@ -94,27 +58,11 @@ def submit_answer():
         memory.save_context({"topic": topic}, {"text": question})
         memory.save_context({"topic": topic}, {"text": answer})
 
-        retriever = vector_embeddings.as_retriever(
-        search_kwargs={
-            "k": 25,
-            "pre_filter": {
-                "$and": [
-                    {"topics": {"$in": [topic]}},
-                    {"user_id": user_id},
-                    {"session": session}
-                    ]
-                }
-            }
-        )
-
-        relevant_docs = retriever.get_relevant_documents(topic)
-        context = "\n".join([doc.page_content for doc in relevant_docs])
-
         evaluation = evaluation_chain.run(
             topic=topic,
             question=question,
             user_answer=answer,
-            context=context
+            context=vector_embeddings.get(topic, "")
         ).strip()
 
         if 'Incorrect' in evaluation or 'Partially Correct' in evaluation:
@@ -155,6 +103,14 @@ def submit_PDF():
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, access-control-allow-origin, Access-Control-Allow-Origin'
         return response
     elif request.method == 'POST':
+        # body = request.get_json()
+        # filename = body.get('filename')
+        # print(filename) 
+        
+        # combined_text = pdfextractor.run(filename)
+        # print(combined_text)
+        
+        # return response
         try:
             body = request.get_json()
             if not body:

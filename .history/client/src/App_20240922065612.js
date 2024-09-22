@@ -8,7 +8,6 @@ function App() {
   const [topics, setTopics] = useState([]);
   const [currentTopic, setCurrentTopic] = useState("");
   const [file, setFile] = useState(null);
-  const [isTutorSessionActive, setIsTutorSessionActive] = useState(false);
 
   const handleStart = () => {
     setIsStarted(true);
@@ -38,14 +37,13 @@ function App() {
       formData.append("pdf", file);
     }
     try {
-      const response = await axios.post(
-        "http://localhost:3000/start-learning",
-        formData,
-        {
+      const response = await axios
+        .post("http://localhost:3000/start-learning", formData, {
           headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
+        })
+        .then((response) => console.log(response));
 
+      // Send filepath to Flask backend
       if (file) {
         const flaskResponse = await axios.post(
           "http://127.0.0.1:5000/submitPDF",
@@ -60,18 +58,13 @@ function App() {
         console.log("Flask response:", flaskResponse.data);
       }
 
-      setIsTutorSessionActive(true);
+      alert("Learning session started!");
+      setTopics([]);
+      setFile(null);
     } catch (error) {
       console.error("Error starting learning session:", error);
       alert("Error starting learning session");
     }
-  };
-
-  const handleSessionComplete = () => {
-    setIsTutorSessionActive(false);
-    setTopics([]);
-    setFile(null);
-    alert("Learning session completed!");
   };
 
   if (!isStarted) {
@@ -95,12 +88,6 @@ function App() {
           </button>
         </div>
       </div>
-    );
-  }
-
-  if (isTutorSessionActive) {
-    return (
-      <TutorSession topics={topics} onSessionComplete={handleSessionComplete} />
     );
   }
 

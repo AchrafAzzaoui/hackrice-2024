@@ -34,25 +34,9 @@ def submit_explanation():
 
         memory.save_context({"topic": topic}, {"text": explanation})
 
-        retriever = vector_embeddings.as_retriever(
-        search_kwargs={
-            "k": 25,
-            "pre_filter": {
-                "$and": [
-                    {"topics": {"$in": [topic]}},
-                    {"user_id": user_id},
-                    {"session": session}
-                    ]
-                }
-            }
-        )
-
-        relevant_docs = retriever.get_relevant_documents(topic)
-        context = "\n".join([doc.page_content for doc in relevant_docs])
-
         question = question_chain.run(
             topic=topic,
-            context=context,
+            context=vector_embeddings.get(topic, ""),
             chat_history=memory.load_memory_variables({})["chat_history"],
             evaluation_feedback="None",
             difficulty='easy'
@@ -94,27 +78,11 @@ def submit_answer():
         memory.save_context({"topic": topic}, {"text": question})
         memory.save_context({"topic": topic}, {"text": answer})
 
-        retriever = vector_embeddings.as_retriever(
-        search_kwargs={
-            "k": 25,
-            "pre_filter": {
-                "$and": [
-                    {"topics": {"$in": [topic]}},
-                    {"user_id": user_id},
-                    {"session": session}
-                    ]
-                }
-            }
-        )
-
-        relevant_docs = retriever.get_relevant_documents(topic)
-        context = "\n".join([doc.page_content for doc in relevant_docs])
-
         evaluation = evaluation_chain.run(
             topic=topic,
             question=question,
             user_answer=answer,
-            context=context
+            context=vector_embeddings.get(topic, "")
         ).strip()
 
         if 'Incorrect' in evaluation or 'Partially Correct' in evaluation:
@@ -155,6 +123,14 @@ def submit_PDF():
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, access-control-allow-origin, Access-Control-Allow-Origin'
         return response
     elif request.method == 'POST':
+        # body = request.get_json()
+        # filename = body.get('filename')
+        # print(filename) 
+        
+        # combined_text = pdfextractor.run(filename)
+        # print(combined_text)
+        
+        # return response
         try:
             body = request.get_json()
             if not body:
