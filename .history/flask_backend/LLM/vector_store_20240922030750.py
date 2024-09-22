@@ -46,4 +46,4 @@ def getVectorStore(topics: list, split_texts: str):
 
     print(f"Added {len(documents)} documents to the vector store.")
 
-    return (user_id, session, vector_store)
+    return vector_store

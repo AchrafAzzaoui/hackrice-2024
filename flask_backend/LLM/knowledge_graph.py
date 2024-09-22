@@ -12,7 +12,7 @@ import re
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv("C:\\Users\\achra\\Downloads\\hackrice-2024\\.env")
 
 def getKnowledgeGraph(topics_input: str, extracted_text: str):
     topics = [topic.strip() for topic in topics_input.split(',')]

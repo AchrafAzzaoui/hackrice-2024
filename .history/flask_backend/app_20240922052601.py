@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-global client
+clients = {}
 
 @app.route("/submitPDF", methods=['POST', 'OPTIONS'])
 def submit_PDF():
@@ -52,8 +52,8 @@ def submit_PDF():
             user_id, session, vector_embeddings = vector_store.getVectorStore(ordered_topics, split_texts)
             memory, question_chain, hint_chain, evaluation_chain, answer_chain = agents.getLangChains()
 
-           # Start the learning session in a background task
-            socketio.start_background_task(learning_session, user_id, session, ordered_topics, vector_embeddings, memory, question_chain, hint_chain, evaluation_chain, answer_chain)
+            # Start the learning session in a background thread
+            threading.Thread(target=learning_session, args=(user_id, session, ordered_topics, vector_embeddings, memory, question_chain, hint_chain, evaluation_chain, answer_chain)).start()
 
             # Create a JSON response with the combined text
             response_data = jsonify({"text": combined_text})
@@ -73,7 +73,7 @@ def submit_PDF():
             print(f"Error processing PDF: {str(e)}")
             return jsonify({"error": str(e)}), 500
         
-async def learning_session(user_id, session, topics, vector_embeddings, memory, question_chain, hint_chain, evaluation_chain, answer_chain):
+def learning_session(user_id, session, topics, vector_embeddings, memory, question_chain, hint_chain, evaluation_chain, answer_chain):
     for current_topic in topics:
         retriever = vector_embeddings.as_retriever(
             search_kwargs={
@@ -88,14 +88,13 @@ async def learning_session(user_id, session, topics, vector_embeddings, memory, 
             }
         )
 
-        relevant_docs = await retriever.aget_relevant_documents(current_topic)
+        relevant_docs = retriever.get_relevant_documents(current_topic)
         context = "\n".join([doc.page_content for doc in relevant_docs])
 
         memory.clear()
 
-        await socketio.emit('question', f"Explain {current_topic} to me.")
-        user_explanation = await socketio.call('user_input', to=client, timeout=360)
-        print(user_explanation)
+        socketio.emit('question', f"Explain {current_topic} to me.")
+        user_explanation = socketio.call('user_input', to=clients['frontend'], timeout=60)
 
         memory.save_context({"topic": current_topic}, {"text": user_explanation})
 
@@ -103,89 +102,81 @@ async def learning_session(user_id, session, topics, vector_embeddings, memory, 
         evaluation_feedback = "None"
 
         for question_num in range(1, 3):
-            question = await question_chain.arun(
+            question = question_chain.run(
                 topic=current_topic,
                 context=context,
                 chat_history=memory.load_memory_variables({})["chat_history"],
                 evaluation_feedback=evaluation_feedback,
                 difficulty=difficulty
-            )
-            question = question.strip()
+            ).strip()
 
-            await socketio.emit('question', question)
-            user_answer = await socketio.call('user_input', to=client, timeout=360)
+            socketio.emit('question', question)
+            user_answer = socketio.call('user_input', to=clients['frontend'], timeout=60)
 
             memory.save_context({"topic": current_topic}, {"text": question})
             memory.save_context({"topic": current_topic}, {"text": user_answer})
 
-            evaluation = await evaluation_chain.arun(
+            evaluation = evaluation_chain.run(
                 topic=current_topic,
                 question=question,
                 user_answer=user_answer,
                 context=context
-            )
-            evaluation = evaluation.strip()
+            ).strip()
 
-            await socketio.emit('feedback', evaluation)
+            socketio.emit('feedback', evaluation)
 
             evaluation_feedback = evaluation
 
             if 'Incorrect' in evaluation or 'Partially Correct' in evaluation:
-                await socketio.emit('choice', "Would you like to try again with a hint, or see the correct answer?")
-                choice = await socketio.call('user_input', to=client, timeout=360)
+                socketio.emit('choice', "Would you like to try again with a hint, or see the correct answer?")
+                choice = socketio.call('user_input', to=clients['frontend'], timeout=60)
 
                 if choice == '1':
-                    hint = await hint_chain.arun(evaluation=evaluation)
-                    hint = hint.strip()
-                    await socketio.emit('hint', hint)
-                    user_answer_2 = await socketio.call('user_input', to=client, timeout=360)
+                    hint = hint_chain.run(evaluation=evaluation).strip()
+                    socketio.emit('hint', hint)
+                    user_answer_2 = socketio.call('user_input', to=clients['frontend'], timeout=60)
 
                     memory.save_context({"topic": current_topic}, {"text": user_answer_2})
 
-                    evaluation_2 = await evaluation_chain.arun(
+                    evaluation_2 = evaluation_chain.run(
                         topic=current_topic,
                         question=question,
                         user_answer=user_answer_2,
                         context=context
-                    )
-                    evaluation_2 = evaluation_2.strip()
+                    ).strip()
 
-                    await socketio.emit('feedback', evaluation_2)
+                    socketio.emit('feedback', evaluation_2)
 
                     difficulty = 'harder' if 'Correct' in evaluation_2 else 'easier'
                     evaluation_feedback = evaluation_2
                 else:
-                    correct_answer = await answer_chain.arun(
+                    correct_answer = answer_chain.run(
                         topic=current_topic,
                         question=question,
                         context=context
-                    )
-                    correct_answer = correct_answer.strip()
-                    await socketio.emit('correct_answer', correct_answer)
+                    ).strip()
+                    socketio.emit('correct_answer', correct_answer)
 
                     difficulty = 'easier'
             else:
                 difficulty = 'harder' if 'Correct' in evaluation else 'same'
 
-        await socketio.emit('topic_finished', f"Finished topic: {current_topic}")
+        socketio.emit('topic_finished', f"Finished topic: {current_topic}")
 
 @socketio.on('user_input')
 def handle_user_input(data):
-    print('inside handle')
-    print(data)
     return data
 
 @socketio.on('connect')
 def handle_connect():
-    global client
-    client = request.sid
-    print(f"Client connected: {request.sid}")
+    client_id = request.sid
+    clients["frontend"] = client_id
+    print(f"Client connected: {client_id}")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    global client
-    client = None
     print(f"Client disconnected: {request.sid}")
+    clients.pop(request.sid, None)
 
 
 
