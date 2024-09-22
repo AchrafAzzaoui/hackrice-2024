@@ -1,8 +1,10 @@
 from flask import Blueprint, jsonify, request
+from flask_cors import cross_origin
 
 main_routes = Blueprint('main', __name__)
 
-@main_routes.route('/api/submitPDF', methods=['POST'])
+@main_routes.route('/api/submitPDF', methods=['POST', 'OPTIONS'])
+@cross_origin(origin="*")
 def submit_pdf():
     data = request.json
     if 'filepath' not in data:

@@ -50,12 +50,7 @@ function App() {
       if (file) {
         const flaskResponse = await axios.post(
           "http://localhost:5000/api/submitPDF",
-          { filepath: file },
-          {
-            headers: { "Content-Type": "application/json" ,
-                       "Access-Control-Allow-Origin": "*"
-            },
-          }
+          { filepath: file }
         );
         console.log("Flask response:", flaskResponse.data);
       }
