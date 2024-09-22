@@ -1,20 +1,15 @@
 from flask import Flask, jsonify, request, make_response
 import pdfextractor
 from flask_socketio import SocketIO, emit
-from LLM import knowledge_graph
-from LLM import vector_store
-from LLM import agents
+from LLM import knowledge_graph, vector_store, agents
 import threading
+import asyncio
 
 app = Flask(__name__)
-
-socketio = SocketIO(app, cors_allowed_origins="*")
-
-global client
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='asyncio')
 
 @app.route("/submitPDF", methods=['POST', 'OPTIONS'])
 def submit_PDF():
-
     if request.method == 'OPTIONS':
         response = make_response()
         response.headers['Access-Control-Allow-Origin'] = '*'
@@ -23,14 +18,6 @@ def submit_PDF():
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, access-control-allow-origin, Access-Control-Allow-Origin'
         return response
     elif request.method == 'POST':
-        # body = request.get_json()
-        # filename = body.get('filename')
-        # print(filename) 
-        
-        # combined_text = pdfextractor.run(filename)
-        # print(combined_text)
-        
-        # return response
         try:
             body = request.get_json()
             if not body:
@@ -52,27 +39,15 @@ def submit_PDF():
             user_id, session, vector_embeddings = vector_store.getVectorStore(ordered_topics, split_texts)
             memory, question_chain, hint_chain, evaluation_chain, answer_chain = agents.getLangChains()
 
-           # Start the learning session in a background task
+            # Start the learning session in a background task
             socketio.start_background_task(learning_session, user_id, session, ordered_topics, vector_embeddings, memory, question_chain, hint_chain, evaluation_chain, answer_chain)
 
-            # Create a JSON response with the combined text
-            response_data = jsonify({"text": combined_text})
-            
-            # Set the Content-Type header to application/json
-            response_data.headers['Content-Type'] = 'application/json'
-            
-            # Copy over the CORS headers
-            response_data.headers['Access-Control-Allow-Origin'] = '*'
-            response_data.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-            response_data.headers['Content-Type'] = '*'
-            response_data.headers['Access-Control-Allow-Headers'] = 'Content-Type, access-control-allow-origin, Access-Control-Allow-Origin'
-
-            return response_data
+            return jsonify({"message": "Learning session started"}), 200
 
         except Exception as e:
             print(f"Error processing PDF: {str(e)}")
             return jsonify({"error": str(e)}), 500
-        
+
 async def learning_session(user_id, session, topics, vector_embeddings, memory, question_chain, hint_chain, evaluation_chain, answer_chain):
     for current_topic in topics:
         retriever = vector_embeddings.as_retriever(
@@ -94,7 +69,7 @@ async def learning_session(user_id, session, topics, vector_embeddings, memory, 
         memory.clear()
 
         await socketio.emit('question', f"Explain {current_topic} to me.")
-        user_explanation = await socketio.call('user_input', to=client, timeout=360)
+        user_explanation = await socketio.call('user_input', timeout=360)
         print(user_explanation)
 
         memory.save_context({"topic": current_topic}, {"text": user_explanation})
@@ -113,7 +88,7 @@ async def learning_session(user_id, session, topics, vector_embeddings, memory, 
             question = question.strip()
 
             await socketio.emit('question', question)
-            user_answer = await socketio.call('user_input', to=client, timeout=360)
+            user_answer = await socketio.call('user_input', timeout=360)
 
             memory.save_context({"topic": current_topic}, {"text": question})
             memory.save_context({"topic": current_topic}, {"text": user_answer})
@@ -132,13 +107,13 @@ async def learning_session(user_id, session, topics, vector_embeddings, memory, 
 
             if 'Incorrect' in evaluation or 'Partially Correct' in evaluation:
                 await socketio.emit('choice', "Would you like to try again with a hint, or see the correct answer?")
-                choice = await socketio.call('user_input', to=client, timeout=360)
+                choice = await socketio.call('user_input', timeout=360)
 
                 if choice == '1':
                     hint = await hint_chain.arun(evaluation=evaluation)
                     hint = hint.strip()
                     await socketio.emit('hint', hint)
-                    user_answer_2 = await socketio.call('user_input', to=client, timeout=360)
+                    user_answer_2 = await socketio.call('user_input', timeout=360)
 
                     memory.save_context({"topic": current_topic}, {"text": user_answer_2})
 
@@ -177,17 +152,11 @@ def handle_user_input(data):
 
 @socketio.on('connect')
 def handle_connect():
-    global client
-    client = request.sid
     print(f"Client connected: {request.sid}")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    global client
-    client = None
     print(f"Client disconnected: {request.sid}")
 
-
-
 if __name__ == '__main__':
-    app.run(port=5000)
+    socketio.run(app, debug=True, port=5000)

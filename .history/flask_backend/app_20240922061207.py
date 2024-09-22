@@ -94,7 +94,7 @@ async def learning_session(user_id, session, topics, vector_embeddings, memory, 
         memory.clear()
 
         await socketio.emit('question', f"Explain {current_topic} to me.")
-        user_explanation = await socketio.call('user_input', to=client, timeout=360)
+        user_explanation = await socketio.call('user_input', timeout=360)
         print(user_explanation)
 
         memory.save_context({"topic": current_topic}, {"text": user_explanation})
@@ -113,7 +113,7 @@ async def learning_session(user_id, session, topics, vector_embeddings, memory, 
             question = question.strip()
 
             await socketio.emit('question', question)
-            user_answer = await socketio.call('user_input', to=client, timeout=360)
+            user_answer = await socketio.call('user_input', timeout=360)
 
             memory.save_context({"topic": current_topic}, {"text": question})
             memory.save_context({"topic": current_topic}, {"text": user_answer})
@@ -132,13 +132,13 @@ async def learning_session(user_id, session, topics, vector_embeddings, memory, 
 
             if 'Incorrect' in evaluation or 'Partially Correct' in evaluation:
                 await socketio.emit('choice', "Would you like to try again with a hint, or see the correct answer?")
-                choice = await socketio.call('user_input', to=client, timeout=360)
+                choice = await socketio.call('user_input', timeout=360)
 
                 if choice == '1':
                     hint = await hint_chain.arun(evaluation=evaluation)
                     hint = hint.strip()
                     await socketio.emit('hint', hint)
-                    user_answer_2 = await socketio.call('user_input', to=client, timeout=360)
+                    user_answer_2 = await socketio.call('user_input', timeout=360)
 
                     memory.save_context({"topic": current_topic}, {"text": user_answer_2})
 
@@ -177,14 +177,10 @@ def handle_user_input(data):
 
 @socketio.on('connect')
 def handle_connect():
-    global client
-    client = request.sid
     print(f"Client connected: {request.sid}")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    global client
-    client = None
     print(f"Client disconnected: {request.sid}")
 
 
