@@ -42,7 +42,10 @@ function App() {
         "http://localhost:3000/start-learning",
         formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: {
+            "Content-Type": "multipart/form-data",
+            "Access-Control-Allow-Origin": "*",
+          },
         }
       );
 
